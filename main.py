@@ -28,11 +28,17 @@ def output_dir() -> Path:
     return Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
 
 
+MIN_CHARS = 1
+MAX_CHARS = 280
+
+
 def check_poem(text: str) -> None:
     """Gate the poem against the competition's own rules."""
     count = len(text)  # Unicode code points, as the sealed scorer counts
-    if not 1 <= count <= 280:
-        raise ValueError(f"poem is {count} characters, must be 1-280")
+    if not MIN_CHARS <= count <= MAX_CHARS:
+        raise ValueError(
+            f"poem is {count} characters, must be {MIN_CHARS}-{MAX_CHARS}"
+        )
     if not text.strip():
         raise ValueError("poem must not be only white space")
 
@@ -48,9 +54,11 @@ def write_entry(directory: Path) -> Path:
 def main() -> int:
     check_poem(POEM)
     target = write_entry(output_dir())
-    written = target.read_text(encoding="utf-8")
-    if written != POEM:
-        raise RuntimeError("round-trip check failed: file differs from poem")
+    raw = target.read_bytes()
+    if raw != POEM.encode("utf-8"):
+        raise RuntimeError("round-trip check failed: file bytes differ from poem")
+    written = raw.decode("utf-8")  # strict: proves the file is valid UTF-8
+    check_poem(written)
     print(f"wrote {target} ({len(POEM)} characters)")
     return 0
 
